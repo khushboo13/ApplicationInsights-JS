@@ -33,17 +33,17 @@ let _markCount: number = 0;
 /** @Ignore */
 function _supportsFetch(): (input: RequestInfo, init?: RequestInit) => Promise<Response> {
     let _global = getGlobal();
-    if (!_global || 
+    if (!_global ||
             _isNullOrUndefined((_global as any).Request) ||
             _isNullOrUndefined((_global as any).Request[strPrototype]) ||
             _isNullOrUndefined(_global[strFetch])) {
         return null;
     }
-    
+
     return _global[strFetch];
 }
 
-/** 
+/**
  * Determines whether ajax monitoring can be enabled on this document
  * @returns True if Ajax monitoring is supported on this page, otherwise false
  * @ignore
@@ -83,7 +83,7 @@ function _supportsAjaxMonitoring(ajaxMonitorInstance:AjaxMonitor): boolean {
                 "Failed to enable XMLHttpRequest monitoring, extension is not supported",
                 {
                     exception: Util.dump(e)
-                });        
+                });
         }
     }
 
@@ -213,7 +213,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
         let _enableResponseHeaderTracking:boolean = false;
         let _hooks:IInstrumentHook[] = [];
         let _disabledUrls:any = {};
-           
+
         dynamicProto(AjaxMonitor, this, (_self, base) => {
             _self.initialize = (config: IConfiguration & IConfig, core: IAppInsightsCore, extensions: IPlugin[], pluginChain?:ITelemetryPluginChain) => {
                 if (!_self.isInitialized()) {
@@ -223,7 +223,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                     _arrForEach(_objKeys(defaultConfig), (field) => {
                         _config[field] = ctx.getConfig(AjaxMonitor.identifier, field, defaultConfig[field]);
                     });
-        
+
                     let distributedTracingMode = _config.distributedTracingMode;
                     _enableRequestHeaderTracking = _config.enableRequestHeaderTracking;
                     _enableAjaxPerfTracking = _config.enableAjaxPerfTracking;
@@ -244,9 +244,9 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                     if (_config.disableAjaxTracking === false) {
                         _instrumentXhr();
                     }
-        
+
                     _instrumentFetch();
-        
+
                     if (extensions.length > 0 && extensions) {
                         let propExt: any, extIx = 0;
                         while (!propExt && extIx < extensions.length) {
@@ -261,7 +261,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                     }
                 }
             };
-        
+
             _self.teardown = () => {
                 // Remove all instrumentation hooks
                 _arrForEach(_hooks, (fn) => {
@@ -337,20 +337,20 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                             }
                         }
                     }
-        
+
                     return xhr;
                 }
 
                 return undefined;
             }
-       
+
             _self[strTrackDependencyDataInternal] = (dependency: IDependencyTelemetry, properties?: { [key: string]: any }, systemProperties?: { [key: string]: any }) => {
                 if (_maxAjaxCallsPerView === -1 || _trackAjaxAttempts < _maxAjaxCallsPerView) {
                     // Hack since expected format in w3c mode is |abc.def.
                     // Non-w3c format is |abc.def
-                    // @todo Remove if better solution is available, e.g. handle in portal 
+                    // @todo Remove if better solution is available, e.g. handle in portal
                     if ((_config.distributedTracingMode === DistributedTracingModes.W3C
-                        || _config.distributedTracingMode === DistributedTracingModes.AI_AND_W3C) 
+                        || _config.distributedTracingMode === DistributedTracingModes.AI_AND_W3C)
                         && typeof dependency.id === "string" && dependency.id[dependency.id.length - 1] !== "."
                     ) {
                         dependency.id += ".";
@@ -388,8 +388,8 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                         // Add request hook
                         req: (callDetails: IInstrumentCallDetails, input, init) => {
                             let fetchData: ajaxRecord;
-                            if (_fetchInitialized && 
-                                    !_isDisabledRequest(null, input, init) && 
+                            if (_fetchInitialized &&
+                                    !_isDisabledRequest(null, input, init) &&
                                     // If we have a polyfil and XHR instrumented then let XHR report otherwise we get duplicates
                                     !(isPolyfill && _xhrInitialized)) {
                                 let ctx = callDetails.ctx();
@@ -412,19 +412,19 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                             headerMap: null,
                                             correlationContext: _getFetchCorrelationContext(response)
                                         };
-                    
+
                                         if (_enableResponseHeaderTracking) {
                                             const responseHeaderMap = {};
                                             response.headers.forEach((value: string, name: string) => {
                                                 responseHeaderMap[name] = value;
                                             });
-                    
+
                                             ajaxResponse.headerMap = responseHeaderMap;
                                         }
-                    
+
                                         return ajaxResponse;
                                     });
-                    
+
                                     return response;
                                 })
                                 .catch((reason: any) => {
@@ -434,10 +434,10 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                             }
                         },
                         // Create an error callback to report any hook errors
-                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxOpen, 
+                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxOpen,
                             "Failed to monitor Window.fetch, monitoring data for this fetch call may be incorrect.")
                     }));
-    
+
                     _fetchInitialized = true;
                 } else if (isPolyfill) {
                     // If fetch is a polyfill we need to capture the request to ensure that we correctly track
@@ -472,15 +472,15 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                         req: (args:IInstrumentCallDetails, method:string, url:string, async?:boolean) => {
                             let xhr = args.inst as XMLHttpRequestInstrumented;
                             let ajaxData = xhr[strAjaxData];
-                            if (!_isDisabledRequest(xhr, url) && _isMonitoredXhrInstance(xhr, true) && 
+                            if (!_isDisabledRequest(xhr, url) && _isMonitoredXhrInstance(xhr, true) &&
                                     (!ajaxData || !ajaxData.xhrMonitoringState.openDone)) {
                                 _openHandler(xhr, method, url, async);
                             }
                         },
-                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxOpen, 
+                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxOpen,
                             "Failed to monitor XMLHttpRequest.open, monitoring data for this ajax call may be incorrect.")
                     });
-    
+
                     // Instrument send
                     _hookProto(XMLHttpRequest, "send", {
                         req: (args:IInstrumentCallDetails, context?: Document | BodyInit | null) => {
@@ -493,7 +493,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                 ajaxData.xhrMonitoringState.sendDone = true;
                             }
                         },
-                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxSend, 
+                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxSend,
                             "Failed to monitor XMLHttpRequest, monitoring data for this ajax call may be incorrect.")
                     });
 
@@ -507,7 +507,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                 ajaxData.xhrMonitoringState.abortDone = true;
                             }
                         },
-                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxAbort, 
+                        hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxAbort,
                             "Failed to monitor XMLHttpRequest.abort, monitoring data for this ajax call may be incorrect.")
                     });
 
@@ -520,7 +520,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                     xhr[strAjaxData].requestHeaders[header] = value;
                                 }
                             },
-                            hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxSetRequestHeader, 
+                            hkErr: _createErrorCallbackFunc(_self, _InternalMessageId.FailedMonitorAjaxSetRequestHeader,
                                 "Failed to monitor XMLHttpRequest.setRequestHeader, monitoring data for this ajax call may be incorrect.")
                         });
                     }
@@ -665,7 +665,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                 responseText: _getResponseText(xhr),
                                 response: xhr.response
                             };
-    
+
                             if (_enableResponseHeaderTracking) {
                                 const headers = xhr.getAllResponseHeaders();
                                 if (headers) {
@@ -679,11 +679,11 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                         const value = parts.join(': ');
                                         responseHeaderMap[header] = value;
                                     });
-    
+
                                     ajaxResponse.headerMap = responseHeaderMap;
                                 }
                             }
-    
+
                             return ajaxResponse;
                         });
 
@@ -764,7 +764,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                     if (entry.entryType === "resource") {
                                         if ((entry as PerformanceResourceTiming).initiatorType === initiatorType &&
                                                 (_indexOf(entry.name, requestUrl) !== -1 || _indexOf(requestUrl, entry.name) !== -1)) {
-                    
+
                                             perfTiming = entry as PerformanceResourceTiming;
                                         }
                                     } else if (entry.entryType === "mark" && entry.name === perfMark.name) {
@@ -772,7 +772,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                                         ajaxData.perfTiming = perfTiming;
                                         break;
                                     }
-                    
+
                                     if (entry.startTime < perfMark.startTime - 1000) {
                                         // Fallback to try and reduce the time spent looking for the perf entry
                                         break;
@@ -782,7 +782,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                         }
 
                         if (!perfMark ||                // - we don't have a perfMark or
-                            ajaxData.perfTiming ||      // - we have not found the perf entry or 
+                            ajaxData.perfTiming ||      // - we have not found the perf entry or
                             attempt >= maxAttempts ||   // - we have tried too many attempts or
                             ajaxData.async === false) { // - this is a sync request
 
@@ -797,7 +797,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                             trackCallback();
                         } else {
                             // We need to wait for the browser to populate the window.performance entry
-                            // This needs to be at least 1ms as waiting <= 1 (on firefox) is not enough time for fetch or xhr, 
+                            // This needs to be at least 1ms as waiting <= 1 (on firefox) is not enough time for fetch or xhr,
                             // this is a scheduling issue for the browser implementation
                             setTimeout(locateResourceTiming, retryDelay);
                         }
@@ -837,7 +837,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
                 }
 
                 ajaxData.requestHeaders = requestHeaders;
-
+                ajaxData.body = init.body.toString();
                 _createMarkId("fetch", ajaxData);
 
                 return ajaxData;
@@ -918,7 +918,7 @@ export class AjaxMonitor extends BaseTelemetryPlugin implements IDependenciesPlu
             }
         });
     }
-    
+
     public initialize(config: IConfiguration & IConfig, core: IAppInsightsCore, extensions: IPlugin[], pluginChain?:ITelemetryPluginChain) {
         // @DynamicProtoStub -- DO NOT add any code as this will be removed during packaging
     }

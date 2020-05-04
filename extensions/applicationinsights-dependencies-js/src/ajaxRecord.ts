@@ -101,12 +101,12 @@ function _populatePerfData(ajaxData:ajaxRecord, dependency:IDependencyTelemetry)
     let strResponseEnd = strResponse + strEnd;
     let strRedirectStart = strRedirect + strStart;
     let strRedirectEnd = strRedirect = strEnd;
-    
+
     let strTransferSize = "transferSize";
     let strEncodedBodySize = "encodedBodySize";
     let strDecodedBodySize = "decodedBodySize";
     let strServerTiming = "serverTiming"
-    
+
     if (resourceEntry) {
         // redirect
         propsSet |= _setPerfDuration(props, strRedirect, resourceEntry, strRedirectStart, strRedirectEnd);
@@ -190,7 +190,7 @@ export class XHRMonitoringState {
         self.setRequestHeaderDone = false;
         self.sendDone = false;
         self.abortDone = false;
-    
+
         // <summary>True, if onreadyStateChangeCallback function attached to xhr, otherwise false</summary>
         self.stateChangeAttached = false;
     }
@@ -238,6 +238,7 @@ export class ajaxRecord {
 
     public traceID: string;
     public spanID: string;
+    public body: string;
 
     constructor(traceID: string, spanID: string, logger: IDiagnosticLogger) {
         let self = this;
@@ -269,23 +270,24 @@ export class ajaxRecord {
 
         self.traceID = traceID;
         self.spanID = spanID;
+        self.body = null;
 
         dynamicProto(ajaxRecord, self, (self) => {
             self.getAbsoluteUrl= () => {
                 return self.requestUrl ? UrlHelper.getAbsoluteUrl(self.requestUrl) : null;
             }
-        
+
             self.getPathName = () => {
                 return self.requestUrl ? DataSanitizer.sanitizeUrl(_logger, UrlHelper.getCompleteUrl(self.method, self.requestUrl)) : null;
             }
-        
+
             self.CreateTrackItem = (ajaxType:string, enableRequestHeaderTracking:boolean, getResponse:() => IAjaxRecordResponse):IDependencyTelemetry => {
                 // round to 3 decimal points
                 self.ajaxTotalDuration = Math.round(DateTimeUtils.GetDuration(self.requestSentTime, self.responseFinishedTime) * 1000) / 1000;
                 if (self.ajaxTotalDuration < 0) {
                     return null;
                 }
-        
+
                 let dependency = {
                     id: "|" + self.traceID + "." + self.spanID,
                     target: self.getAbsoluteUrl(),
@@ -295,36 +297,37 @@ export class ajaxRecord {
                     success: (+(self.status)) >= 200 && (+(self.status)) < 400,
                     responseCode: (+(self.status)),
                     method: self.method,
+                    body: self.body,
                     [strProperties]: { HttpMethod: self.method }
                 } as IDependencyTelemetry;
-        
+
                 // Add Ajax perf details if available
                 _populatePerfData(self, dependency);
-        
+
                 if (enableRequestHeaderTracking) {
                     if (_objKeys(self.requestHeaders).length > 0) {
                         dependency[strProperties] = dependency[strProperties] || {};
                         dependency[strProperties].requestHeaders = self.requestHeaders;
                     }
                 }
-        
+
                 if (getResponse) {
                     let response:IAjaxRecordResponse = getResponse();
                     if (response) {
-        
+
                         // enrich dependency target with correlation context from the server
                         const correlationContext = response.correlationContext;
                         if (correlationContext) {
                             dependency.correlationContext = /* dependency.target + " | " + */ correlationContext;
                         }
-        
+
                         if (response.headerMap) {
                             if (_objKeys(response.headerMap).length > 0) {
                                 dependency[strProperties] = dependency[strProperties] || {};
                                 dependency[strProperties].responseHeaders = response.headerMap;
                             }
                         }
-        
+
                         if (self.status >= 400) {
                             const responseType = response.type;
                             dependency[strProperties] = dependency[strProperties] || {};
@@ -337,7 +340,7 @@ export class ajaxRecord {
                         }
                     }
                 }
-        
+
                 return dependency;
             }
         });
